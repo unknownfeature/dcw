@@ -30,10 +30,11 @@ const (
 )
 
 type ControllerConfig[T StringFromAlphabetCustomConfig] struct {
-	Workers              int                            `json:"workers"`
-	MaxSendRetries       int                            `json:"maxSendRetries"`
-	MaxSendRetriesTtsSec int                            `json:"maxSendRetriesTtsSec"`
-	CustomConfig         StringFromAlphabetCustomConfig `json:"customConfig"`
+	Workers               int                            `json:"workers"`
+	MaxSendRetries        int                            `json:"maxSendRetries"`
+	MaxSendRetriesTtsSec  int                            `json:"maxSendRetriesTtsSec"`
+	PrecomputeChannelSize int                            `json:"precomputeChannelSize"`
+	CustomConfig          StringFromAlphabetCustomConfig `json:"customConfig"`
 }
 
 type StringFromAlphabetCustomConfig struct {

@@ -25,7 +25,7 @@ var dispatcherFunctions = map[string]common.Func[config.ControllerConfig[config.
 }
 
 func getSfaBruteForceDispatcher(controllerConfig config.ControllerConfig[config.StringFromAlphabetCustomConfig]) (common.Function[[]byte, []byte], error) {
-	workSupplier, err := sfa.ForStandard(controllerConfig.CustomConfig.Alphabet, controllerConfig.CustomConfig.ResLength, controllerConfig.CustomConfig.Formatter)
+	workSupplier, err := sfa.ForStandard(controllerConfig.PrecomputeChannelSize, controllerConfig.CustomConfig.Alphabet, controllerConfig.CustomConfig.ResLength, controllerConfig.CustomConfig.Formatter)
 	if err != nil {
 		log.Fatal("can't create supplier for the server", err)
 	}

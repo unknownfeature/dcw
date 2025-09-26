@@ -63,7 +63,7 @@ func TestToUuid4StringFromRunesError(t *testing.T) {
 }
 
 func TestResultsFormatting(t *testing.T) {
-	subj, _ := ForStandard(0, 4, 0)
+	subj, _ := ForStandard(1000, 0, 4, 0)
 	batch, _ := subj.Apply(100)
 
 	for i := range batch {
