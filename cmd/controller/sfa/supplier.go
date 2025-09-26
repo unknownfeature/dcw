@@ -5,7 +5,6 @@ import (
 	"github.com/unknownfeature/dcw/cmd/common/config"
 	"github.com/unknownfeature/dcw/cmd/util"
 	"log"
-	"math"
 	"sort"
 	"sync"
 )
@@ -34,13 +33,9 @@ type Config struct {
 
 type State struct {
 	Config Config `json:"config"`
-
-	// total number of all possible results (|Alphabet| ^ ResultLength)
-	Total int `json:"total"`
-	// currently sent to workers
-	Current int `json:"current"`
 }
 
+// todo add state persistence
 type Supplier struct {
 	state             *State
 	stateLock         *sync.RWMutex
@@ -67,7 +62,7 @@ func ForCustom(precomputeChannelSize int, resultLength int, alphabet []rune, for
 		return stateAlphabet[i] < stateAlphabet[j]
 	})
 	// Initialize state: positions start at 0, Total is calculated as N^L.
-	state := &State{Config: Config{stateAlphabet, resultLength, formatter}, Total: int(math.Pow(float64(len(stateAlphabet)), float64(resultLength)))}
+	state := &State{Config: Config{stateAlphabet, resultLength, formatter}}
 	return StringFromAlphabetGeneratorFromState(precomputeChannelSize, state)
 
 }
@@ -100,32 +95,17 @@ func StringFromAlphabetGeneratorFromState(precomputeChannelSize int, state *Stat
 // Apply requests a batch of strings. It is the primary generation entry point.
 func (g *Supplier) Apply(batchSize int) ([]string, error) {
 
-	// todo refactor
-	g.stateLock.Lock()
-	if g.state.Total == g.state.Current {
-		g.stateLock.Unlock()
-		return nil, PotentialResultsExhaustedError
-	}
-	g.stateLock.Unlock()
-
-	var err error = nil
 	res := make([]string, 0)
 
 	for i := 0; i < batchSize; i++ {
-		g.stateLock.Lock()
-		if g.state.Total > g.state.Current {
-			g.state.Current++
-			res = append(res, <-g.precomputeChannel)
-			g.stateLock.Unlock()
+		if val, ok := <-g.precomputeChannel; !ok {
+			return res, PotentialResultsExhaustedError
 		} else {
-			g.stateLock.Unlock()
-			err = PotentialResultsExhaustedError
-			break
+			res = append(res, val)
 		}
-
 	}
 
-	return res, err
+	return res, nil
 }
 
 func (g *Supplier) CurrentState() ([]byte, error) {
@@ -154,5 +134,8 @@ func (g *Supplier) generate(template []rune, startWordPosition int) {
 			template[startWordPosition] = g.state.Config.Alphabet[ap]
 			g.generate(template, startWordPosition-1)
 		}
+	}
+	if startWordPosition == g.state.Config.ResultLength-1 {
+		close(g.precomputeChannel)
 	}
 }

@@ -103,7 +103,6 @@ func (s *Server) startWorker(internalAddress string, wg *sync.WaitGroup) {
 	}
 
 	for !s.stopped.Load() {
-
 		s.maybeProcessMessage(worker, &lock)
 	}
 
