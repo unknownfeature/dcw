@@ -2,6 +2,7 @@
   "workers": 1,
   "maxSendRetries": 10,
   "maxSendRetriesTtsSec": 5,
+  "precomputeChannelSize": 1000,
   "customConfig": {
     "alphabet": 0,
     "resLength": 4,

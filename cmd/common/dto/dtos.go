@@ -19,6 +19,11 @@ const (
 	Result
 )
 
+const (
+	Done                      = "done"
+	PotentialResultsExhausted = "potential results exhausted"
+)
+
 type Request[In any] struct {
 	Type Type `json:"type"`
 	Body In   `json:"body"`

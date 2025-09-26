@@ -7,6 +7,8 @@ import (
 	"net/http"
 )
 
+// this type's responsibility is to build HTTP request based on the body and headers templates it received st the moment of construction
+// and in parameter it will be receiving at runtime
 type RequestSupplier[In any] struct {
 	method          string
 	headersSupplier common.Function[any, map[string]string]
@@ -21,15 +23,17 @@ func NewRequestSupplier[In any](method string, headersSupplier common.Function[a
 }
 
 func (r *RequestSupplier[In]) Apply(in In) (*http.Request, error) {
+
 	supply, err := r.bodySupplier.Apply(in)
-	log.Println(string(supply))
+
 	req, err := http.NewRequest(r.method, r.url, bytes.NewReader(supply))
-	log.Println(req)
+
 	if err != nil {
 		log.Printf("can't create http request %s", err.Error())
 		return nil, err
 	}
 	headers, err := r.headersSupplier.Apply(in)
+
 	if err != nil {
 		log.Printf("can't create http request %s", err.Error())
 		return nil, err

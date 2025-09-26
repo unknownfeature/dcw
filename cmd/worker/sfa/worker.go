@@ -25,13 +25,16 @@ func NewWorker(semaphore *semaphore.Weighted,
 func (w *Worker) Apply(work []byte) (*dto.Request[string], error) {
 	defer w.semaphore.Release(1)
 	resp, err := w.transformer.BytesToResponse(work)
+
 	if err != nil {
 		log.Printf("can't process response %s because of %s", string(work), err.Error())
 		return nil, err
 	}
+	// special response (kind of crutch) which tells the client that the result is found and we can relax
 	if resp.Done {
-		return nil, errors.New("done")
+		return nil, errors.New(dto.Done)
 	}
+
 	input := resp.Body
 
 	for i := 0; i < len(input); i++ {

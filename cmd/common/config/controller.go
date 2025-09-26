@@ -30,10 +30,11 @@ const (
 )
 
 type ControllerConfig[T StringFromAlphabetCustomConfig] struct {
-	Workers              int                            `json:"workers"`
-	MaxSendRetries       int                            `json:"maxSendRetries"`
-	MaxSendRetriesTtsSec int                            `json:"maxSendRetriesTtsSec"`
-	CustomConfig         StringFromAlphabetCustomConfig `json:"customConfig"`
+	Workers               int                            `json:"workers"`
+	MaxSendRetries        int                            `json:"maxSendRetries"`
+	MaxSendRetriesTtsSec  int                            `json:"maxSendRetriesTtsSec"`
+	PrecomputeChannelSize int                            `json:"precomputeChannelSize"`
+	CustomConfig          StringFromAlphabetCustomConfig `json:"customConfig"`
 }
 
 type StringFromAlphabetCustomConfig struct {
@@ -42,8 +43,8 @@ type StringFromAlphabetCustomConfig struct {
 	Formatter Formatter `json:"formatter"`
 }
 
-func ReadControllerConfig[T StringFromAlphabetCustomConfig]() (ControllerConfig[T], error) {
+func ReadControllerConfig[T StringFromAlphabetCustomConfig]() (*ControllerConfig[T], error) {
 
-	return util.ReadToStruct[ControllerConfig[T]](configNames[Controller], func() ControllerConfig[T] { return ControllerConfig[T]{} })
+	return util.ReadToStruct[ControllerConfig[T]](configNames[Controller], func() *ControllerConfig[T] { return &ControllerConfig[T]{} })
 
 }

@@ -28,8 +28,8 @@ type TestHttpCustomConfig struct {
 	SuccessStatus int `json:"successStatus"`
 }
 
-func ReadWorkerConfig[T HttpRequestVerifier[C], C CbCustomConfig | TestHttpCustomConfig]() (WorkerConfig[T, C], error) {
+func ReadWorkerConfig[T HttpRequestVerifier[C], C CbCustomConfig | TestHttpCustomConfig]() (*WorkerConfig[T, C], error) {
 
-	return util.ReadToStruct[WorkerConfig[T, C]](configNames[Worker], func() WorkerConfig[T, C] { return WorkerConfig[T, C]{} })
+	return util.ReadToStruct[WorkerConfig[T, C]](configNames[Worker], func() *WorkerConfig[T, C] { return &WorkerConfig[T, C]{} })
 
 }

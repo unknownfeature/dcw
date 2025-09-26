@@ -12,20 +12,20 @@ import (
 	"log"
 )
 
-func getDispatcher(commonConfig config.CommonConfig, controllerConfig config.ControllerConfig[config.StringFromAlphabetCustomConfig]) (common.Function[[]byte, []byte], error) {
+func getDispatcher(commonConfig *config.CommonConfig, controllerConfig *config.ControllerConfig[config.StringFromAlphabetCustomConfig]) (common.Function[[]byte, []byte], error) {
 	if function, ok := dispatcherFunctions[commonConfig.JobName]; ok {
 		return function(controllerConfig)
 	}
 	return nil, errors.New(fmt.Sprintf("unknown job name %s", commonConfig.JobName))
 }
 
-var dispatcherFunctions = map[string]common.Func[config.ControllerConfig[config.StringFromAlphabetCustomConfig], common.Function[[]byte, []byte]]{
+var dispatcherFunctions = map[string]common.Func[*config.ControllerConfig[config.StringFromAlphabetCustomConfig], common.Function[[]byte, []byte]]{
 	config.TestJob: getSfaBruteForceDispatcher,
 	config.CbJob:   getSfaBruteForceDispatcher,
 }
 
-func getSfaBruteForceDispatcher(controllerConfig config.ControllerConfig[config.StringFromAlphabetCustomConfig]) (common.Function[[]byte, []byte], error) {
-	workSupplier, err := sfa.ForStandard(controllerConfig.CustomConfig.Alphabet, controllerConfig.CustomConfig.ResLength, controllerConfig.CustomConfig.Formatter)
+func getSfaBruteForceDispatcher(controllerConfig *config.ControllerConfig[config.StringFromAlphabetCustomConfig]) (common.Function[[]byte, []byte], error) {
+	workSupplier, err := sfa.ForStandard(controllerConfig.PrecomputeChannelSize, controllerConfig.CustomConfig.Alphabet, controllerConfig.CustomConfig.ResLength, controllerConfig.CustomConfig.Formatter)
 	if err != nil {
 		log.Fatal("can't create supplier for the server", err)
 	}

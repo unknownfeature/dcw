@@ -29,8 +29,8 @@ type CommonConfig struct {
 	JobName        string `json:"jobName"`
 }
 
-func ReadCommonConfig() (CommonConfig, error) {
+func ReadCommonConfig() (*CommonConfig, error) {
 
-	return util.ReadToStruct[CommonConfig](configNames[Common], func() CommonConfig { return CommonConfig{} })
+	return util.ReadToStruct[CommonConfig](configNames[Common], func() *CommonConfig { return &CommonConfig{} })
 
 }

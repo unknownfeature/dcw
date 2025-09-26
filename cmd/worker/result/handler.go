@@ -17,11 +17,11 @@ func NewHandler[In any](client client.Client, requestTransformer dto.RequestTran
 
 func (h *Handler[In]) Consume(res dto.Request[In]) error {
 
-	req, err := h.requestTransformer.RequestToBytes(res)
-	if err != nil {
+	if req, err := h.requestTransformer.RequestToBytes(res); err != nil {
+		return err
+	} else {
+		_, err = h.client.Call(req)
 		return err
 	}
-	_, err = h.client.Call(req)
-	return err
 
 }

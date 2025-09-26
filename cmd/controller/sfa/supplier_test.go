@@ -3,7 +3,9 @@ package sfa
 import (
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/unknownfeature/dcw/cmd/common/config"
+	"math"
 	"testing"
 )
 
@@ -11,12 +13,11 @@ var expectedDecimal = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
 
 var expectedIncorrectAlphabetLengthError error = IncorrectAlphabetLengthError
 var expectedIncorrectFormatter = IncorrectFormatterError
-var expectedIncorrectLength = IncorrectAlphabetLengthError
 var expectedCustomNotSupported = CustomNotSupportedError
 
 func TestForCustomSuccess(t *testing.T) {
 
-	gen, err := ForCustom(8, alphabetCharacters[config.Decimals], config.Simple)
+	gen, err := ForCustom(1000, 8, alphabetCharacters[config.Decimals], config.Simple)
 
 	if err != nil {
 		t.Error(err.Error())
@@ -24,13 +25,6 @@ func TestForCustomSuccess(t *testing.T) {
 
 	state := gen.state
 	conf := state.Config
-
-	for i := 0; i < len(state.CurrentPositions); i++ {
-		if state.CurrentPositions[i] != 0 {
-			fmt.Println(state.CurrentPositions)
-			t.Errorf("expected current position at %d to be 0, got %d", i, state.CurrentPositions[i])
-		}
-	}
 
 	if conf.ResultLength != 8 {
 		t.Errorf("expected result length 8, got %d", conf.ResultLength)
@@ -49,7 +43,7 @@ func TestForCustomSuccess(t *testing.T) {
 
 func TestForCustomError(t *testing.T) {
 
-	_, err := ForCustom(0, alphabetCharacters[config.Decimals], config.Simple)
+	_, err := ForCustom(1000, 0, alphabetCharacters[config.Decimals], config.Simple)
 
 	if err == nil {
 		t.Error("expected error")
@@ -59,7 +53,7 @@ func TestForCustomError(t *testing.T) {
 	//	t.Errorf("expected error %s, got %s", expectedIncorrectLength.Error(), err.Error())
 	//}
 
-	_, err = ForCustom(1, []rune{}, config.Simple)
+	_, err = ForCustom(1000, 1, []rune{}, config.Simple)
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -67,7 +61,7 @@ func TestForCustomError(t *testing.T) {
 	if !errors.Is(err, expectedIncorrectAlphabetLengthError) {
 		t.Errorf("expected error %s, got %s", expectedIncorrectAlphabetLengthError.Error(), err.Error())
 	}
-	_, err = ForCustom(2, alphabetCharacters[config.Decimals], 3)
+	_, err = ForCustom(1000, 2, alphabetCharacters[config.Decimals], 3)
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -80,7 +74,7 @@ func TestForCustomError(t *testing.T) {
 
 func TestForStandardError(t *testing.T) {
 
-	_, err := ForStandard(config.Custom, 8, config.Simple)
+	_, err := ForStandard(1000, config.Custom, 8, config.Simple)
 
 	if err == nil {
 		t.Error("expected error")
@@ -92,57 +86,9 @@ func TestForStandardError(t *testing.T) {
 
 }
 
-//func TestRecalculatePositions(t *testing.T) {
-//	gen, err := ForStandard(config.Decimals, 8, config.Simple)
-//
-//	p, err := gen.recalculatePositions(5)
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 0, 5})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
-//
-//	gen, _ = ForStandard(config.Decimals, 8, config.Simple)
-//
-//	p, err = gen.recalculatePositions(16)
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 1, 6})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
-//
-//	gen, _ = ForStandard(config.Hex, 8, config.Simple)
-//
-//	p, err = gen.recalculatePositions(5000)
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 1, 3, 8, 8})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
-//
-//	gen, _ = ForStandard(config.Hex, 10, config.Simple)
-//
-//	p, err = gen.recalculatePositions(100)
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 0, 0, 6, 4})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
-//
-//	gen, _ = ForStandard(config.Base36, 4, config.Simple)
-//
-//	p, err = gen.recalculatePositions(1679617)
-//	// todo this is bs
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 1})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0})
-//
-//}
-//
-//func validatePositions(t *testing.T, err error, actual []int, expected []int) {
-//	if err != nil {
-//		t.Error(err.Error())
-//	}
-//	for i := 0; i < len(expected); i++ {
-//		if expected[i] != actual[i] {
-//			fmt.Println(expected)
-//			fmt.Println(actual)
-//			t.Errorf("different positions at %d, actual %d, expected: %d", i, actual[i], expected[i])
-//			return
-//		}
-//	}
-//}
-
 func TestSuppliesAllTheOptions(t *testing.T) {
 
-	subj, err := ForStandard(config.Decimals, 3, config.Simple)
+	subj, err := ForStandard(1000, config.Decimals, 3, config.Simple)
 	if err != nil {
 		t.Fatalf("error is not expected %s", err.Error())
 	}
@@ -152,11 +98,12 @@ func TestSuppliesAllTheOptions(t *testing.T) {
 		t.Fatalf("error is not expected %s", err.Error())
 	}
 	if len(batch) != 1000 {
+
 		t.Fatalf("invalid batch size expected %d, actual %d", 1000, len(batch))
 	}
 	batch, err = subj.Apply(1000)
 
-	if batch != nil {
+	if len(batch) != 0 {
 		t.Fatalf("no options should be supplied")
 	}
 
@@ -168,7 +115,7 @@ func TestSuppliesAllTheOptions(t *testing.T) {
 
 func TestSteps(t *testing.T) {
 
-	subj, err := ForStandard(config.Decimals, 4, config.Simple)
+	subj, err := ForStandard(1000, config.Decimals, 4, config.Simple)
 	if err != nil {
 		t.Fatalf("error is not expected %s", err.Error())
 	}
@@ -177,12 +124,59 @@ func TestSteps(t *testing.T) {
 
 	for err == nil && counter > 0 {
 		counter--
+		if len(batch) == 0 {
+			break
+		}
 		println(batch[len(batch)-1])
 		batch, err = subj.Apply(10)
-		if err != nil {
-			fmt.Println(err)
+		if err != nil && !errors.Is(err, PotentialResultsExhaustedError) {
+			t.Fatalf("error is not expected %s", err.Error())
 		}
 
 	}
+
+	if counter != 10 {
+		t.Fatalf("invalid counter expected 11, got %d", counter)
+	}
+}
+
+func TestAllPermutationsGenerated(t *testing.T) {
+	resultLength := 3
+
+	alphabet := []rune{'a', 'b', 'c', 't', 'x'}
+	expectedCount := int(math.Pow(float64(len(alphabet)), float64(resultLength)))
+	precomputeChannelSize := 10
+
+	// 1. Initialize the Generator
+	supplier, err := ForCustom(precomputeChannelSize, resultLength, alphabet, config.Simple)
+	assert.NoError(t, err, "ForCustom should not return an error on valid input")
+	assert.NotNil(t, supplier, "Supplier should not be nil")
+
+	batchSize := 51
+	uniqueResults := make(map[string]struct{})
+	for {
+		batch, applyErr := supplier.Apply(batchSize)
+
+		// Check for any unexpected errors
+
+		for _, item := range batch {
+			uniqueResults[item] = struct{}{}
+		}
+
+		// If the error is the expected exhaustion error, we stop.
+		if applyErr == PotentialResultsExhaustedError {
+			break
+		}
+
+		if applyErr != nil {
+			t.Fatalf("Unexpected error during Apply: %v", applyErr)
+			return
+		}
+
+	}
+
+	actualCount := len(uniqueResults)
+	assert.Equal(t, expectedCount, actualCount,
+		fmt.Sprintf("Expected %d total permutations (N^L), but got %d.", expectedCount, actualCount))
 
 }

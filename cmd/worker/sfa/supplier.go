@@ -19,15 +19,14 @@ func NewSupplier(batchSize int, requestTransformer dto.RequestTransformer[int], 
 	return &WorkSupplier{batchSize, requestTransformer, semaphore, context}
 }
 
+// generates next work request that goes to the server
 func (s *WorkSupplier) Supply() ([]byte, error) {
-	err := s.semaphore.Acquire(s.context, 1)
-	if err != nil {
+
+	if err := s.semaphore.Acquire(s.context, 1); err != nil {
 		return nil, err
 	}
+
 	req := dto.Request[int]{Type: dto.Work, Body: s.batchSize}
-	bytes, err := s.requestTransformer.RequestToBytes(req)
-	if err != nil {
-		return nil, err
-	}
-	return bytes, nil
+
+	return s.requestTransformer.RequestToBytes(req)
 }

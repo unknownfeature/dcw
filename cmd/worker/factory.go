@@ -22,19 +22,19 @@ import (
 	"time"
 )
 
-func getRunner(commonConfig config.CommonConfig) (runner.Runner, error) {
+func getRunner(commonConfig *config.CommonConfig) (runner.Runner, error) {
 	if function, ok := runnerFunctions[commonConfig.JobName]; ok {
 		return function(commonConfig)
 	}
 	return nil, errors.New(fmt.Sprintf("unknown job name %s", commonConfig.JobName))
 }
 
-var runnerFunctions = map[string]common.Func[config.CommonConfig, runner.Runner]{
+var runnerFunctions = map[string]common.Func[*config.CommonConfig, runner.Runner]{
 	config.TestJob: getTestHttpRunner,
 	config.CbJob:   getCbRunner,
 }
 
-func getCbRunner(commonConfig config.CommonConfig) (runner.Runner, error) {
+func getCbRunner(commonConfig *config.CommonConfig) (runner.Runner, error) {
 	workerConfig, err := config.ReadWorkerConfig[config.HttpRequestVerifier[config.CbCustomConfig]]()
 	if err != nil {
 		log.Fatal("can't read worker config", err)
@@ -78,7 +78,7 @@ func getCbRunner(commonConfig config.CommonConfig) (runner.Runner, error) {
 	return runner.NewDefaultRunner[string](runnerConfig, client, worker, workReqSupplier, resHandler), nil
 }
 
-func getTestHttpRunner(commonConfig config.CommonConfig) (runner.Runner, error) {
+func getTestHttpRunner(commonConfig *config.CommonConfig) (runner.Runner, error) {
 
 	workerConfig, err := config.ReadWorkerConfig[config.HttpRequestVerifier[config.TestHttpCustomConfig]]()
 	if err != nil {
