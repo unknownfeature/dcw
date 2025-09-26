@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// this is sort of response post processing
 type Verifier[In any] struct {
 	client          *http.Client
 	requestSupplier common.Function[In, *http.Request]
@@ -17,25 +18,18 @@ func NewVerifier[In any](client *http.Client, requestSupplier common.Function[In
 }
 
 func (v *Verifier[In]) Test(in In) (bool, error) {
-	req, err := v.requestSupplier.Apply(in)
-	log.Println(req)
-	if err != nil {
+
+	if req, err := v.requestSupplier.Apply(in); err != nil {
 		log.Printf("can't verify because request can't be created %s", err.Error())
 		return false, err
-	}
-	resp, err := v.client.Do(req)
-
-	if err != nil {
+	} else if resp, err := v.client.Do(req); err != nil {
 		log.Printf("error calling http request %s", err.Error())
 		return false, err
-	}
-
-	success, err := v.onResponse.Test(resp)
-	if err != nil {
+	} else if success, err := v.onResponse.Test(resp); err != nil {
 		log.Printf("error verifying http request %s", err.Error())
-
+		return false, err
+	} else {
+		return success, nil
 	}
-
-	return success, nil
 
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/unknownfeature/dcw/cmd/common/config"
 	"github.com/unknownfeature/dcw/cmd/util"
 	"math"
+	"slices"
 	"sort"
 	"sync"
 )
@@ -32,10 +33,14 @@ type Config struct {
 }
 
 type State struct {
-	Config           Config `json:"config"`
-	CurrentPositions []int  `json:"currentPositions"`
-	Total            int    `json:"total"`
-	Current          int    `json:"current"`
+	Config Config `json:"config"`
+	// stores the state of generation: for each position in the result -> index of the rune in the alphabet
+	// This array acts as a multi-digit counter in base |Alphabet|.
+	CurrentPositions []int `json:"currentPositions"`
+	// total number of all possible results (|Alphabet| ^ ResultLength)
+	Total int `json:"total"`
+	// currently results generated (the number of "counts" performed)
+	Current int `json:"current"`
 }
 
 type Supplier struct {
@@ -58,10 +63,12 @@ func ForCustom(resultLength int, alphabet []rune, formatter config.Formatter) (*
 		return nil, IncorrectFormatterError
 	}
 	stateAlphabet := append([]rune(nil), alphabet...)
+	// Sort the alphabet to ensure deterministic and canonical generation order.
 	sort.Slice(stateAlphabet, func(i, j int) bool {
 		return stateAlphabet[i] < stateAlphabet[j]
 	})
-	state := State{Config: Config{stateAlphabet, resultLength, formatter}, CurrentPositions: make([]int, resultLength), Total: int(math.Pow(float64(len(stateAlphabet)), float64(resultLength)))}
+	// Initialize state: positions start at 0, Total is calculated as N^L.
+	state := &State{Config: Config{stateAlphabet, resultLength, formatter}, CurrentPositions: make([]int, resultLength), Total: int(math.Pow(float64(len(stateAlphabet)), float64(resultLength)))}
 	return StringFromAlphabetGeneratorFromState(state)
 
 }
@@ -76,95 +83,119 @@ func ForStandard(alphabet config.Alphabet, resultLength int, formatter config.Fo
 
 func Resume(stateFileLocation string) (*Supplier, error) {
 
-	res, err := util.ReadToStruct[State](stateFileLocation, func() State { return State{} })
+	res, err := util.ReadToStruct[State](stateFileLocation, func() *State { return &State{} })
 	if err != nil {
 		return nil, err
 	}
 	return StringFromAlphabetGeneratorFromState(res)
 }
 
-func StringFromAlphabetGeneratorFromState(state State) (*Supplier, error) {
+func StringFromAlphabetGeneratorFromState(state *State) (*Supplier, error) {
 
-	return &Supplier{&state, &sync.RWMutex{}}, nil
+	return &Supplier{state, &sync.RWMutex{}}, nil
 }
 
+// Apply requests a batch of strings. It is the primary generation entry point.
 func (g *Supplier) Apply(batchSize int) ([]string, error) {
 
 	// todo enable this(temporary disabled due to bugs)
+	// The commented out code suggests the original intent was to use an arithmetic
+	// position advancement (jump ahead), but it currently relies on recursion.
 
-	//currentPositions, err := g.recalculatePositions(batchSize)
+	currentPositions, err := g.recalculatePositions(batchSize)
 
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
+	if err != nil {
+		return nil, err
+	}
+
 	template := make([]rune, g.state.Config.ResultLength)
 	chunk := make([]string, 0)
-	g.stateLock.Lock()
-	if g.state.Current >= g.state.Total {
+
+	g.stateLock.Lock() // Lock for writing (modifying state/current positions)
+	defer g.stateLock.Unlock()
+
+	// if we have reached the end
+	if util.AllEqual(g.state.CurrentPositions, len(g.state.Config.Alphabet)-1) {
 		return nil, PotentialResultsExhaustedError
 	}
-	_, _, err := g.generateBatch(&chunk, template, batchSize, 0, g.state.CurrentPositions)
-	g.stateLock.Unlock()
+	// Start the recursive generation algorithm (depth-first search/base-N counting)
+	_, _, err = g.generateBatch(&chunk, template, batchSize, 0, currentPositions)
 
 	return chunk, err
 }
 
 func (g *Supplier) CurrentState() ([]byte, error) {
-	g.stateLock.RLock()
+	g.stateLock.RLock() // Use RLock since only reading state for serialization
 	res, e := json.Marshal(g.state)
 	g.stateLock.RUnlock()
 	return res, e
 }
 
-func (g *Supplier) generateBatch(res *[]string, current []rune, left int, depth int, currentIndices []int) (bool, int, error) {
+// this function implements a multi-digit counter in a custom base (|Alphabet|) through a depth-first approach
+func (g *Supplier) generateBatch(res *[]string, current []rune, remaining int, depth int, currentIndices []int) (bool, int, error) {
 
-	if g.state.Total <= g.state.Current {
+	// Check 1: Stop if we iterated over all the positions
+	if util.AllEqual(currentIndices, len(g.state.Config.Alphabet)-1) {
 		return false, 0, PotentialResultsExhaustedError
 	}
-	if left == 0 {
-		return false, left, nil
+	// Check 2: Stop if the requested batch is full.
+	if remaining == 0 {
+		return false, remaining, nil
 	}
+
 	alphabetLength := len(g.state.Config.Alphabet)
 
+	// BASE CASE: If depth equals string length, a full string has been formed.
 	if depth == len(current) {
+
 		strRes, err := formattersFunctions[g.state.Config.Formatter](current)
 		if err != nil {
-			return false, left, err
+			return false, remaining, err
 		}
 		*res = append(*res, strRes)
-		g.state.Current++
-		return true, left - 1, nil
+		// Signal a successful generation and decrease the remaining count.
+		return true, remaining - 1, nil
 	}
 
-	counter := left
+	counter := remaining
 	times := 0
 	carryover := false
 
+	// RECURSIVE STEP: Iterate through possible characters at the current position ('digit').
 	for times < alphabetLength && counter > 0 && g.state.Total > g.state.Current {
+		// Set the character at the current depth, starting from the last saved index.
+		// The modulo ensures we wrap around the alphabet when incrementing.
 		current[depth] = g.state.Config.Alphabet[(times+currentIndices[depth])%alphabetLength]
+
+		// RECURSIVE CALL: Generate the rest of the string by increasing the depth (moving right).
 		newCarryover, newLeft, err := g.generateBatch(res, current, counter, depth+1, currentIndices)
+
 		counter = newLeft
-		carryover = carryover || newCarryover
+		carryover = carryover || newCarryover // Track if any inner call caused a rollover/carry.
 		if err != nil {
 			break
 		}
 		times++
 	}
+
+	// CARRYOVER LOGIC: Acts like the ripple-carry in a multi-digit counter.
 	if carryover {
 		oldVal := currentIndices[depth]
-		newVal := oldVal + times
-		adjustedVal := newVal % alphabetLength
+		newVal := oldVal + times               // Sum of the old index + number of times this position looped.
+		adjustedVal := newVal % alphabetLength // The new index at this position after loop and rollover.
 		currentIndices[depth] = adjustedVal
+		// If the new total count (newVal) is different from the adjusted index (adjustedVal),
+		// it means a full rollover occurred, and we signal a carry to the position (digit) on the left.
 		return newVal != adjustedVal, counter, nil
 	}
 	return false, counter, nil
 
 }
 
-func (g *Supplier) updatePositions(positions []int, log int, sum int, index int) int {
+// updatePositions implements the arithmetic advancement for the multi-digit counter.
+func (g *Supplier) updatePositions(positions []int, log int, total int, index int) int {
 
-	vocabLength := len(g.state.Config.Alphabet)
+	aplhabetlength := len(g.state.Config.Alphabet)
 
 	if index == len(positions) {
 		return 0
@@ -172,12 +203,12 @@ func (g *Supplier) updatePositions(positions []int, log int, sum int, index int)
 
 	newLog := log
 	adjustIndex := len(positions)-index == log
-	newSum := sum
+	newSum := total
 	newCarryover := 0
 	if adjustIndex {
-		iteration := int(math.Pow(float64(vocabLength), float64(log)))
-		newSum = sum % iteration
-		newCarryover = sum / iteration
+		iteration := int(math.Pow(float64(aplhabetlength), float64(log)))
+		newSum = total % iteration
+		newCarryover = total / iteration
 		newLog = newLog - 1
 	}
 
@@ -186,32 +217,28 @@ func (g *Supplier) updatePositions(positions []int, log int, sum int, index int)
 	if index == len(positions)-1 {
 		newValue += newSum
 	}
-	positions[index] = int(math.Min(float64(newValue), float64(vocabLength-1)))
+	positions[index] = int(math.Min(float64(newValue), float64(aplhabetlength-1)))
 	if positions[index] < newValue && newCarryover == 0 {
 		newCarryover++
 	}
 	return newCarryover
 }
 
+// this function calculates the "jump" in positions
+// this ius needed to make this generator insanely optimal and not make workers to wait for the previous generation to be over
+// positions are only needed for the generating function to know where pick up the generation from
 func (g *Supplier) recalculatePositions(batchSize int) ([]int, error) {
 
-	//g.stateLock.Lock()
-	//
-	//
-	//alphabetLength := len(g.state.Config.Alphabet)
-	//log := int(math.Log10(float64(batchSize)) / math.Log10(float64(alphabetLength)))
-	//
-	//oldPositions := make([]int, len(g.state.CurrentPositions))
-	//newPositions := make([]int, len(g.state.CurrentPositions))
-	//copy(oldPositions, g.state.CurrentPositions)
-	//copy(newPositions, g.state.CurrentPositions)
-	//:= g.updatePositions(newPositions, int(math.Min(float64(log), float64(g.state.Config.ResultLength))), batchSize, 0)
-	//
-	//
-	//for i := range g.state.CurrentPositions {
-	//	g.state.CurrentPositions[i] = newPositions[i]
-	//}
-	//g.stateLock.Unlock()
+	g.stateLock.Lock()
+	defer g.stateLock.Unlock()
 
-	return nil, nil
+	alphabetLength := len(g.state.Config.Alphabet)
+
+	// this is needed in order to understand how many positions will the batch fully rotate
+	log := int(math.Log10(float64(batchSize)) / math.Log10(float64(alphabetLength)))
+
+	oldPositions := slices.Clone(g.state.CurrentPositions)
+
+	_ = g.updatePositions(g.state.CurrentPositions, int(math.Min(float64(log), float64(g.state.Config.ResultLength))), batchSize, 0)
+	return oldPositions, nil
 }

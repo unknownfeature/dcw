@@ -48,44 +48,45 @@ func (r *DefaultRunner[Result]) Stop() {
 
 func (r *DefaultRunner[Result]) runWorker(wg *sync.WaitGroup) {
 	defer wg.Done()
-	for {
-		if r.stop.Load() {
-			return
-		}
-		log.Println("calling supply")
-		supply, err := r.requestSupplier.Supply()
-		if err != nil {
+
+	for !r.stop.Load() {
+
+		if supply, err := r.requestSupplier.Supply(); err != nil {
 			log.Printf("error calling supply, will exit %s", err.Error())
+		} else {
+			r.doWork(supply)
 		}
-		r.doWork(supply)
+
 	}
 }
 
 func (r *DefaultRunner[Result]) doWork(req []byte) {
-	log.Println("calling server")
+
+	// call server  to get the next chunk of work
 	resp, err := r.client.Call(req)
-	if err != nil && err.Error() == "potential results exhausted" {
+
+	// if all options were tried and to success then the server returns this error
+	if err != nil && err.Error() == dto.PotentialResultsExhausted {
 		log.Printf("error calling the server %s", err.Error())
+
+		// client just stops
 		r.Stop()
-
-		return
-	}
-	log.Println("applying result")
-	res, err := r.worker.Apply(resp)
-	if err != nil {
-		log.Printf("error processing work from server %s", err.Error())
-		return
-	}
-	if res == nil {
 		return
 	}
 
-	// todo add retries
-	err = r.resultHandler.Consume(*res)
-	if err != nil {
-		log.Printf("error handling result %s", err.Error())
+	// process next batch from the server
+	if res, err := r.worker.Apply(resp); err == nil || err.Error() == dto.PotentialResultsExhausted {
+		if err != nil {
+			log.Printf("result has been found by someone else")
+		} else if err = r.resultHandler.Consume(*res); err != nil {
+			// todo should let the server know? But also if it errors then most likely there is a problem with connection to the server
+			log.Printf("error handling result %s", err.Error())
+		}
+		// stop regardless of the error
+		r.Stop()
 	} else {
-		r.Stop()
+		log.Printf("error processing work from server %s", err.Error())
+		// todo this about this case
 	}
 
 }

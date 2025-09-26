@@ -12,7 +12,7 @@ import (
 	"log"
 )
 
-func getDispatcher(commonConfig config.CommonConfig, controllerConfig config.ControllerConfig[config.StringFromAlphabetCustomConfig]) (common.Function[[]byte, []byte], error) {
+func getDispatcher(commonConfig *config.CommonConfig, controllerConfig config.ControllerConfig[config.StringFromAlphabetCustomConfig]) (common.Function[[]byte, []byte], error) {
 	if function, ok := dispatcherFunctions[commonConfig.JobName]; ok {
 		return function(controllerConfig)
 	}

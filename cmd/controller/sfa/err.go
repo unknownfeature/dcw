@@ -1,5 +1,7 @@
 package sfa
 
+import "github.com/unknownfeature/dcw/cmd/common/dto"
+
 var (
 	CustomNotSupportedError        = newCustomNotSupported()
 	IncorrectFormatterError        = newIncorrectFormatter()
@@ -66,7 +68,7 @@ func (e PotentialResultsExhausted) Error() string {
 }
 
 func newPotentialResultsExhausted() error {
-	return PotentialResultsExhausted{"potential results exhausted"}
+	return PotentialResultsExhausted{dto.PotentialResultsExhausted}
 }
 
 type InvalidStateFile struct {

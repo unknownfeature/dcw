@@ -38,10 +38,12 @@ func NewServer(handler common.Function[[]byte, []byte],
 		return nil, err
 	}
 	frontend, err := zmq4.NewSocket(zmq4.ROUTER)
+
 	if err != nil {
 		log.Printf("can't create socket %s", err.Error())
 		return nil, err
 	}
+
 	return &Server{handler, &atomic.Bool{}, &sync.WaitGroup{}, serverConfig, backend, frontend}, nil
 }
 
@@ -85,52 +87,49 @@ func (s *Server) Stop() error {
 }
 
 func (s *Server) startWorker(internalAddress string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	worker, err := zmq4.NewSocket(zmq4.DEALER)
-	lock := sync.Mutex{}
 	if err != nil {
 		log.Printf("can't create socket %s", err.Error())
 		return
 	}
 	defer util.CloseSocket(worker)
-	defer wg.Done()
-	err = worker.Connect(internalAddress)
-	if err != nil {
+	lock := sync.Mutex{}
+
+	if err = worker.Connect(internalAddress); err != nil {
 		log.Printf("can't connect worker socket %s", err.Error())
 		return
 	}
-	for {
-		if s.stopped.Load() {
-			return
-		}
+
+	for !s.stopped.Load() {
+
 		s.maybeProcessMessage(worker, &lock)
 	}
+
 }
 
 func (s *Server) maybeProcessMessage(worker *zmq4.Socket, lock *sync.Mutex) {
 
 	lock.Lock()
+	defer lock.Unlock()
+
 	request, err := worker.RecvMessage(0)
 
-	if err != nil {
-		return
-	}
-
-	if len(request) != 2 {
+	if err != nil || len(request) != 2 {
 		log.Print("invalid request ", request)
-		lock.Unlock()
 		return
 	}
 
 	client, content := s.parseMessage(request)
 
-	res, err := s.handler.Apply(content)
-	if err != nil {
-		s.respond(worker, client, res)
-		lock.Unlock()
+	if res, err := s.handler.Apply(content); err != nil {
+		log.Printf("error genarating response to a worker %s", err.Error())
+		s.respond(worker, client, []byte(err.Error()))
 		return
+	} else {
+		s.respond(worker, client, res)
 	}
-	s.respond(worker, client, res)
-	lock.Unlock()
 }
 
 func (s *Server) parseMessage(msg []string) (string, []byte) {
@@ -139,14 +138,13 @@ func (s *Server) parseMessage(msg []string) (string, []byte) {
 
 func (s *Server) respond(router *zmq4.Socket, client string, resp []byte) {
 	for i := s.serverConfig.MaxSendResponseRetries; i > 0; i-- {
-		_, err := router.SendMessage(client, resp)
-
-		if err == nil {
+		if _, err := router.SendMessage(client, resp); err == nil {
 			return
-		}
+		} else {
+			log.Printf("couldn't send the response, will retry %s", err.Error())
+			time.Sleep(s.serverConfig.TimeToSleepBetweenSendResponseRetries * time.Second)
 
-		log.Printf("couldn't send the response, will retry %s", err.Error())
-		time.Sleep(s.serverConfig.TimeToSleepBetweenSendResponseRetries * time.Second)
+		}
 
 	}
 }

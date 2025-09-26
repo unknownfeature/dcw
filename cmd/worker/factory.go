@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-func getRunner(commonConfig config.CommonConfig) (runner.Runner, error) {
+func getRunner(commonConfig *config.CommonConfig) (runner.Runner, error) {
 	if function, ok := runnerFunctions[commonConfig.JobName]; ok {
 		return function(commonConfig)
 	}

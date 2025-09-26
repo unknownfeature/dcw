@@ -27,7 +27,6 @@ func TestForCustomSuccess(t *testing.T) {
 
 	for i := 0; i < len(state.CurrentPositions); i++ {
 		if state.CurrentPositions[i] != 0 {
-			fmt.Println(state.CurrentPositions)
 			t.Errorf("expected current position at %d to be 0, got %d", i, state.CurrentPositions[i])
 		}
 	}
@@ -92,53 +91,51 @@ func TestForStandardError(t *testing.T) {
 
 }
 
-//func TestRecalculatePositions(t *testing.T) {
-//	gen, err := ForStandard(config.Decimals, 8, config.Simple)
-//
-//	p, err := gen.recalculatePositions(5)
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 0, 5})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
-//
-//	gen, _ = ForStandard(config.Decimals, 8, config.Simple)
-//
-//	p, err = gen.recalculatePositions(16)
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 1, 6})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
-//
-//	gen, _ = ForStandard(config.Hex, 8, config.Simple)
-//
-//	p, err = gen.recalculatePositions(5000)
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 1, 3, 8, 8})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
-//
-//	gen, _ = ForStandard(config.Hex, 10, config.Simple)
-//
-//	p, err = gen.recalculatePositions(100)
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 0, 0, 6, 4})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
-//
-//	gen, _ = ForStandard(config.Base36, 4, config.Simple)
-//
-//	p, err = gen.recalculatePositions(1679617)
-//	// todo this is bs
-//	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 1})
-//	validatePositions(t, err, p, []int{0, 0, 0, 0})
-//
-//}
-//
-//func validatePositions(t *testing.T, err error, actual []int, expected []int) {
-//	if err != nil {
-//		t.Error(err.Error())
-//	}
-//	for i := 0; i < len(expected); i++ {
-//		if expected[i] != actual[i] {
-//			fmt.Println(expected)
-//			fmt.Println(actual)
-//			t.Errorf("different positions at %d, actual %d, expected: %d", i, actual[i], expected[i])
-//			return
-//		}
-//	}
-//}
+func TestRecalculatePositions(t *testing.T) {
+	gen, err := ForStandard(config.Decimals, 8, config.Simple)
+
+	p, err := gen.recalculatePositions(5)
+	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 0, 5})
+	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
+
+	gen, _ = ForStandard(config.Decimals, 8, config.Simple)
+
+	p, err = gen.recalculatePositions(16)
+	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 1, 6})
+	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
+
+	gen, _ = ForStandard(config.Hex, 8, config.Simple)
+
+	p, err = gen.recalculatePositions(5000)
+	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 1, 3, 8, 8})
+	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0})
+
+	gen, _ = ForStandard(config.Hex, 10, config.Simple)
+
+	p, err = gen.recalculatePositions(100)
+	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 0, 0, 0, 0, 0, 6, 4})
+	validatePositions(t, err, p, []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+
+	gen, _ = ForStandard(config.Base36, 4, config.Simple)
+
+	p, err = gen.recalculatePositions(1679617)
+	// todo this is bs
+	validatePositions(t, err, gen.state.CurrentPositions, []int{0, 0, 0, 1})
+	validatePositions(t, err, p, []int{0, 0, 0, 0})
+
+}
+
+func validatePositions(t *testing.T, err error, actual []int, expected []int) {
+	if err != nil {
+		t.Error(err.Error())
+	}
+	for i := 0; i < len(expected); i++ {
+		if expected[i] != actual[i] {
+			t.Errorf("different positions at %d, actual %d, expected: %d", i, actual[i], expected[i])
+			return
+		}
+	}
+}
 
 func TestSuppliesAllTheOptions(t *testing.T) {
 

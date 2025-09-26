@@ -42,8 +42,8 @@ type StringFromAlphabetCustomConfig struct {
 	Formatter Formatter `json:"formatter"`
 }
 
-func ReadControllerConfig[T StringFromAlphabetCustomConfig]() (ControllerConfig[T], error) {
+func ReadControllerConfig[T StringFromAlphabetCustomConfig]() (*ControllerConfig[T], error) {
 
-	return util.ReadToStruct[ControllerConfig[T]](configNames[Controller], func() ControllerConfig[T] { return ControllerConfig[T]{} })
+	return util.ReadToStruct[ControllerConfig[T]](configNames[Controller], func() *ControllerConfig[T] { return &ControllerConfig[T]{} })
 
 }

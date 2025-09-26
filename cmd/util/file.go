@@ -7,12 +7,14 @@ import (
 	"os"
 )
 
-func ReadToStruct[T any](fileLocation string, constructor common.SupplierFunc[T]) (T, error) {
+// just a deduplication of unmarshalling logic
+func ReadToStruct[T any](fileLocation string, constructor common.SupplierFunc[*T]) (*T, error) {
+	if fileLocation == "" {
+		return nil, errors.New("state file can't be empty")
+	}
+
 	obj := constructor()
 
-	if fileLocation == "" {
-		return obj, errors.New("state file can't be empty")
-	}
 	if _, err := os.Stat(fileLocation); errors.Is(err, os.ErrNotExist) {
 		return obj, err
 	}
@@ -21,7 +23,7 @@ func ReadToStruct[T any](fileLocation string, constructor common.SupplierFunc[T]
 		return obj, e
 	}
 
-	err := json.Unmarshal(content, &obj)
+	err := json.Unmarshal(content, obj)
 	return obj, err
 
 }
